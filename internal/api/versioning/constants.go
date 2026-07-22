@@ -2,6 +2,7 @@ package versioning
 
 import (
 	"gateway/internal/api"
+	"gateway/internal/api/endpoints/challenge"
 	"gateway/internal/api/endpoints/ek"
 	"gateway/internal/api/endpoints/misc"
 	"net/http"
@@ -24,11 +25,13 @@ func GetVersionedEndpoints(deps *api.Dependencies) VersionedEndpoints {
 	return VersionedEndpoints{
 		VersionV1dot0dot0: {
 			http.MethodGet: {
-				"/ping":            misc.PingV1(),
-				"/bank/:bankId/ek": ek.GetEKV1(),
+				"/ping":                   misc.PingV1(),
+				"/bank/:bankId/ek":        ek.GetEKV1(),
+				"/bank/:bankId/challenge": challenge.GetChallengeV1(),
 			},
 			http.MethodPost: {
-				"/bank/:bankId/ek": ek.PostEKV1(),
+				"/bank/:bankId/ek":        ek.PostEKV1(),
+				"/bank/:bankId/challenge": challenge.PassChallengeV1(deps),
 			},
 		},
 	}
