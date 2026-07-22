@@ -46,18 +46,23 @@ func SetAPIURLsV1() gin.HandlerFunc {
 			return
 		}
 
-		var body memory.APIURLs
+		var req struct {
+			ApiUrls []string `json:"api_urls"`
+		}
 
-		if c.BindJSON(&body) != nil {
+		if c.BindJSON(&req) != nil {
 			c.Status(400)
 			return
 		}
 
-		body.UpdatedAt = time.Now()
+		var apiUrls memory.APIURLs
+
+		apiUrls.ApiUrls = req.ApiUrls
+		apiUrls.UpdatedAt = time.Now()
 
 		memory.Mutex.Lock()
 
-		memory.APIURLss[bankID] = body
+		memory.APIURLss[bankID] = apiUrls
 
 		memory.Mutex.Unlock()
 

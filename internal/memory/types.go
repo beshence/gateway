@@ -15,6 +15,6 @@ type Challenge struct {
 }
 
 type APIURLs struct {
-	ApiUrls   []string  `json:"apiUrls"`
-	UpdatedAt time.Time `json:"updatedAt"`
+	ApiUrls   []string  `json:"api_urls"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
