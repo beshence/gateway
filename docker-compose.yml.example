@@ -1,0 +1,10 @@
+services:
+  beshence_gateway:
+    image: ghcr.io/beshence/gateway:latest
+    environment:
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_TTL_SECONDS: ${JWT_TTL_SECONDS}
+    ports:
+      - "${HOST_PORT:-27462}:27462"
+    # or use network_mode: "host"
+    restart: unless-stopped
