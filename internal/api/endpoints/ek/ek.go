@@ -21,7 +21,10 @@ func GetEKV1() gin.HandlerFunc {
 		memory.Mutex.Unlock()
 
 		if !ok {
-			c.Status(404)
+			c.JSON(http.StatusNotFound, gin.H{
+				"err":    "NO_BANK",
+				"errmsg": "we don't have encapsulation key of this bank",
+			})
 			return
 		}
 
@@ -43,27 +46,39 @@ func PostEKV1() gin.HandlerFunc {
 		var req postEKV1Request
 
 		if c.BindJSON(&req) != nil {
-			c.Status(http.StatusBadRequest)
+			c.JSON(http.StatusBadRequest, gin.H{
+				"err":    "CANT_BIND_JSON",
+				"errmsg": "could not bind request body",
+			})
 			return
 		}
 
 		ekBytes, err := base64.RawURLEncoding.DecodeString(req.EK)
 
 		if err != nil {
-			c.Status(http.StatusBadRequest)
+			c.JSON(http.StatusBadRequest, gin.H{
+				"err":    "CANT_DECODE_EK",
+				"errmsg": "could not decode encapsulation key",
+			})
 			return
 		}
 
 		ek, err := mlkem.NewEncapsulationKey1024(ekBytes)
 		if err != nil {
-			c.Status(http.StatusBadRequest)
+			c.JSON(http.StatusBadRequest, gin.H{
+				"err":    "CANT_DECODE_EK",
+				"errmsg": "could not decode encapsulation key",
+			})
 			return
 		}
 
 		generatedBankID := misc.GetBankID(ek)
 
 		if bankID != generatedBankID {
-			c.Status(401)
+			c.JSON(http.StatusBadRequest, gin.H{
+				"err":    "CANT_DECODE_EK",
+				"errmsg": "could not decode encapsulation key",
+			})
 			return
 		}
 
@@ -75,7 +90,7 @@ func PostEKV1() gin.HandlerFunc {
 
 		memory.Mutex.Unlock()
 
-		c.JSON(201, gin.H{
+		c.JSON(http.StatusCreated, gin.H{
 			"err": "0",
 		})
 	}

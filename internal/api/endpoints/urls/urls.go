@@ -20,11 +20,17 @@ func GetAPIURLsV1() gin.HandlerFunc {
 		memory.Mutex.Unlock()
 
 		if !ok {
-			c.Status(404)
+			c.JSON(http.StatusNotFound, gin.H{
+				"err":    "NO_BANK",
+				"errmsg": "we don't have information about this bank",
+			})
 			return
 		}
 
-		c.JSON(200, data)
+		c.JSON(http.StatusOK, gin.H{
+			"err":  "0",
+			"urls": data.ApiUrls,
+		})
 	}
 }
 
@@ -42,13 +48,17 @@ func SetAPIURLsV1() gin.HandlerFunc {
 		}
 
 		if bankID != claimsBankID {
-			c.JSON(http.StatusUnauthorized, gin.H{})
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"err":    "UNAUTHORIZED",
+				"errmsg": "unauthorized",
+			})
 			return
 		}
 
 		if !memory.GetLimiter(bankID).Allow() {
-			c.JSON(429, gin.H{
-				"err": "RATE_LIMIT",
+			c.JSON(http.StatusTooManyRequests, gin.H{
+				"err":    "RATE_LIMIT",
+				"errmsg": "rate limited",
 			})
 			return
 		}
@@ -58,7 +68,10 @@ func SetAPIURLsV1() gin.HandlerFunc {
 		}
 
 		if c.BindJSON(&req) != nil {
-			c.Status(400)
+			c.JSON(http.StatusBadRequest, gin.H{
+				"err":    "CANT_BIND_JSON",
+				"errmsg": "could not bind request body",
+			})
 			return
 		}
 
@@ -73,6 +86,8 @@ func SetAPIURLsV1() gin.HandlerFunc {
 
 		memory.Mutex.Unlock()
 
-		c.Status(201)
+		c.JSON(http.StatusCreated, gin.H{
+			"err": "0",
+		})
 	}
 }
