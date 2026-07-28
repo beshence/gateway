@@ -6,6 +6,7 @@ import (
 	"gateway/internal/api/endpoints/ek"
 	"gateway/internal/api/endpoints/misc"
 	"gateway/internal/api/endpoints/urls"
+	"gateway/internal/api/endpoints/ws"
 	"gateway/internal/auth"
 	"net/http"
 )
@@ -31,6 +32,7 @@ func GetVersionedEndpoints(deps *api.Dependencies) VersionedEndpoints {
 				"/bank/:bankId/ek":        ek.GetEKV1(),
 				"/bank/:bankId/challenge": challenge.GetChallengeV1(),
 				"/bank/:bankId/urls":      urls.GetAPIURLsV1(),
+				"/bank/:bankId/ws":        ws.WSV1(deps),
 			},
 			http.MethodPost: {
 				"/bank/:bankId/ek":        ek.PostEKV1(),

@@ -4,7 +4,8 @@ import (
 	"gateway/internal/api"
 	"gateway/internal/api/versioning"
 	"gateway/internal/auth"
-	"gateway/internal/env"
+	"gateway/internal/environment"
+	"gateway/internal/signal"
 	"log"
 	"time"
 
@@ -13,15 +14,10 @@ import (
 )
 
 func main() {
-	env, err := env.Load()
+	env, err := environment.Load()
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	jwt := auth.NewJWTManager(
-		env.JWTSecret,
-		env.JWTTTLSeconds,
-	)
 
 	router := gin.Default()
 
@@ -32,9 +28,14 @@ func main() {
 		MaxAge:          24 * time.Hour,
 	}))
 
-	dependencies := api.NewDependencies(
-		jwt,
+	jwt := auth.NewJWTManager(
+		env.JWTSecret,
+		env.JWTTTLSeconds,
 	)
+
+	sig := signal.NewSignalManager()
+
+	dependencies := api.NewDependencies(jwt, sig)
 
 	versionedEndpoints := versioning.GetVersionedEndpoints(dependencies)
 
