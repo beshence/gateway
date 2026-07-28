@@ -13,6 +13,7 @@ import (
 func WSV1(deps *api.Dependencies) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		bankID := c.Param("bankId")
+		roleRaw := c.Query("role")
 		sessionID := c.Query("session_id")
 
 		if bankID == "" {
@@ -25,9 +26,28 @@ func WSV1(deps *api.Dependencies) gin.HandlerFunc {
 			return
 		}
 
-		role := signal.PeerRoleClient
+		if roleRaw == "" {
+			c.JSON(
+				http.StatusBadRequest,
+				gin.H{
+					"err": "MISSING_ROLE",
+				},
+			)
+			return
+		}
 
-		if c.GetHeader("Authorization") != "" {
+		if roleRaw != "client" && roleRaw != "bank" {
+			c.JSON(
+				http.StatusBadRequest,
+				gin.H{
+					"err": "INVALID_ROLE",
+				},
+			)
+		}
+
+		var role signal.PeerRole
+
+		if roleRaw == "bank" {
 			auth.CheckAuth(deps.JWTManager)(c)
 
 			if c.IsAborted() {
@@ -50,7 +70,7 @@ func WSV1(deps *api.Dependencies) gin.HandlerFunc {
 				c.JSON(
 					http.StatusForbidden,
 					gin.H{
-						"err": "FORBIDDEN",
+						"err": "INVALID_SESSION_ID",
 					},
 				)
 				return
@@ -66,6 +86,7 @@ func WSV1(deps *api.Dependencies) gin.HandlerFunc {
 				)
 				return
 			}
+			role = signal.PeerRoleClient
 		}
 
 		handler :=
