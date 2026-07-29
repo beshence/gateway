@@ -1,13 +1,15 @@
 package ws
 
 import (
+	"context"
 	"gateway/internal/api"
 	"gateway/internal/auth"
 	"gateway/internal/signal"
 	"net/http"
 
+	"github.com/coder/websocket"
+	"github.com/coder/websocket/wsjson"
 	"github.com/gin-gonic/gin"
-	"golang.org/x/net/websocket"
 )
 
 func WSV1(deps *api.Dependencies) gin.HandlerFunc {
@@ -43,6 +45,7 @@ func WSV1(deps *api.Dependencies) gin.HandlerFunc {
 					"err": "INVALID_ROLE",
 				},
 			)
+			return
 		}
 
 		var role signal.PeerRole
@@ -75,7 +78,9 @@ func WSV1(deps *api.Dependencies) gin.HandlerFunc {
 				)
 				return
 			}
+
 			role = signal.PeerRoleBank
+
 		} else {
 			if sessionID == "" {
 				c.JSON(
@@ -86,44 +91,56 @@ func WSV1(deps *api.Dependencies) gin.HandlerFunc {
 				)
 				return
 			}
+
 			role = signal.PeerRoleClient
 		}
 
-		handler :=
-			websocket.Handler(
-				func(conn *websocket.Conn) {
-					peer :=
-						&signal.Peer{
-							BankID:    bankID,
-							Role:      role,
-							SessionID: sessionID,
-							Conn:      conn,
-						}
-
-					deps.SignalManager.Add(peer)
-
-					defer func() {
-						deps.SignalManager.Remove(peer)
-						err := conn.Close()
-						if err != nil {
-							return
-						}
-					}()
-
-					for {
-						var message signal.Message
-						err := websocket.JSON.Receive(conn, &message)
-						if err != nil {
-							break
-						}
-						deps.SignalManager.Forward(peer, message)
-					}
-				},
-			)
-
-		handler.ServeHTTP(
+		conn, err := websocket.Accept(
 			c.Writer,
 			c.Request,
+			&websocket.AcceptOptions{
+				InsecureSkipVerify: true,
+			},
 		)
+
+		if err != nil {
+			return
+		}
+
+		defer conn.Close(
+			websocket.StatusNormalClosure,
+			"",
+		)
+
+		peer := &signal.Peer{
+			BankID:    bankID,
+			Role:      role,
+			SessionID: sessionID,
+			Conn:      conn,
+		}
+
+		deps.SignalManager.Add(peer)
+
+		defer func() {
+			deps.SignalManager.Remove(peer)
+		}()
+
+		ctx := context.Background()
+
+		for {
+			var message signal.Message
+
+			err := wsjson.Read(
+				ctx,
+				conn,
+				&message,
+			)
+
+			if err != nil {
+				break
+			}
+
+			deps.SignalManager.Forward(peer, message)
+		}
 	}
 }

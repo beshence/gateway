@@ -1,9 +1,11 @@
 package signal
 
 import (
+	"context"
 	"sync"
 
-	"golang.org/x/net/websocket"
+	"github.com/coder/websocket"
+	"github.com/coder/websocket/wsjson"
 )
 
 type PeerRole string
@@ -52,7 +54,10 @@ func (m *Manager) Add(peer *Peer) {
 		old := m.banks[peer.BankID]
 
 		if old != nil {
-			old.Conn.Close()
+			_ = old.Conn.Close(
+				websocket.StatusNormalClosure,
+				"replaced by new connection",
+			)
 		}
 
 		m.banks[peer.BankID] = peer
@@ -60,8 +65,7 @@ func (m *Manager) Add(peer *Peer) {
 	}
 
 	if _, ok := m.clients[peer.BankID]; !ok {
-		m.clients[peer.BankID] =
-			make(map[string]*Peer)
+		m.clients[peer.BankID] = make(map[string]*Peer)
 	}
 
 	m.clients[peer.BankID][peer.SessionID] = peer
@@ -92,6 +96,13 @@ func (m *Manager) Remove(peer *Peer) {
 				)
 			}
 		}
+
+		if len(clients) == 0 {
+			delete(
+				m.clients,
+				peer.BankID,
+			)
+		}
 	}
 }
 
@@ -116,7 +127,8 @@ func (m *Manager) Forward(sender *Peer, message Message) {
 		return
 	}
 
-	_ = websocket.JSON.Send(
+	_ = wsjson.Write(
+		context.Background(),
 		target.Conn,
 		message,
 	)
