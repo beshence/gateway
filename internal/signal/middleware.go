@@ -21,10 +21,12 @@ type Peer struct {
 }
 
 type Message struct {
-	SessionID string `json:"session_id"`
-	Type      string `json:"type"`
-	SDP       string `json:"sdp,omitempty"`
-	Candidate string `json:"candidate,omitempty"`
+	SessionID     string  `json:"session_id,omitempty"`
+	Type          string  `json:"type"`
+	SDP           string  `json:"sdp,omitempty"`
+	Candidate     string  `json:"candidate,omitempty"`
+	SDPMid        *string `json:"sdpmid,omitempty"`
+	SDPMLineIndex *uint16 `json:"sdpmlineindex,omitempty"`
 }
 
 type Manager struct {
