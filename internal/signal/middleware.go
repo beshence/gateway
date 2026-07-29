@@ -93,20 +93,18 @@ func (m *Manager) Remove(peer *Peer) {
 	}
 }
 
-func (m *Manager) Forward(
-	sender *Peer,
-	message Message,
-) {
-
+func (m *Manager) Forward(sender *Peer, message Message) {
 	var target *Peer
 
 	m.mu.RLock()
 
 	if sender.Role == PeerRoleClient {
 		target = m.banks[sender.BankID]
+		message.SessionID = sender.SessionID
 	} else {
 		if clients, ok := m.clients[sender.BankID]; ok {
 			target = clients[message.SessionID]
+			message.SessionID = ""
 		}
 	}
 
