@@ -1,6 +1,6 @@
 package challenge
 
-import (
+/*import (
 	"crypto/hmac"
 	"crypto/mlkem"
 	"encoding/base64"
@@ -159,4 +159,4 @@ func PassChallengeV1(deps *api.Dependencies) gin.HandlerFunc {
 			"token": jwtToken,
 		})
 	}
-}
+}*/

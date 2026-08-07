@@ -5,7 +5,7 @@ import (
 )
 
 type Bank struct {
-	EK []byte
+	PublicKeyBytes []byte
 }
 
 type Challenge struct {
@@ -14,7 +14,8 @@ type Challenge struct {
 	ExpiresAt  time.Time
 }
 
-type APIURLs struct {
-	ApiUrls   []string  `json:"api_urls"`
-	UpdatedAt time.Time `json:"updated_at"`
+type BankApiUrls struct {
+	Urls         []string
+	PayloadB64   string
+	SignatureB64 string
 }

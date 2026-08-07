@@ -7,9 +7,9 @@ import (
 )
 
 var (
-	Banks         = map[string]Bank{}
-	Challenges    = map[string]Challenge{}
-	APIURLss      = map[string]APIURLs{}
+	Banks = map[string]Bank{}
+	//Challenges    = map[string]Challenge{}
+	BanksApiUrls  = map[string]BankApiUrls{}
 	Mutex         sync.Mutex
 	Limiters      = map[string]*rate.Limiter{}
 	LimitersMutex sync.Mutex
