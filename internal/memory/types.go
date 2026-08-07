@@ -14,7 +14,5 @@ type Challenge struct {
 }
 
 type BankApiUrls struct {
-	Urls         []string
-	PayloadB64   string
-	SignatureB64 string
+	Urls []string
 }

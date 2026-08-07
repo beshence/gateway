@@ -30,7 +30,6 @@ func GetVersionedEndpoints(deps *api.Dependencies) VersionedEndpoints {
 				"/ping":                   misc.PingV1(),
 				"/bank/:bankId/pk":        pk.GetPublicKeyV1(),
 				"/bank/:bankId/urls":      urls.GetApiUrlsV1(),
-				"/bank/:bankId/urls/ps":   urls.GetApiUrlsPayloadSignatureV1(),
 				"/bank/:bankId/challenge": challenge.GetChallengeV1(),
 				"/bank/:bankId/ws":        ws.WSV1(deps),
 			},
