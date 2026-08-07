@@ -63,7 +63,7 @@ func PostApiUrlsV1() gin.HandlerFunc {
 		}
 
 		var req struct {
-			ApiUrls []string `json:"api_urls"`
+			ApiUrls []string `json:"urls"`
 		}
 
 		if c.BindJSON(&req) != nil {
