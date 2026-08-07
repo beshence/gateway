@@ -7,6 +7,7 @@ import (
 	"gateway/internal/api/endpoints/pk"
 	"gateway/internal/api/endpoints/urls"
 	"gateway/internal/api/endpoints/ws"
+	"gateway/internal/auth"
 	"net/http"
 )
 
@@ -35,7 +36,7 @@ func GetVersionedEndpoints(deps *api.Dependencies) VersionedEndpoints {
 			},
 			http.MethodPost: {
 				"/bank/:bankId/pk":        pk.PostPublicKeyV1(),
-				"/bank/:bankId/urls":      urls.PostApiUrlsV1(),
+				"/bank/:bankId/urls":      auth.RequireAuth(deps.JWTManager, urls.PostApiUrlsV1()),
 				"/bank/:bankId/challenge": challenge.PassChallengeV1(deps),
 			},
 		},
