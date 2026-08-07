@@ -33,18 +33,3 @@ func GetBankID(publicKey slhdsa.PublicKey) (string, error) {
 
 	return strings.ToLower(encodedStr), nil
 }
-
-/*func RandomToken() string {
-	b := make([]byte, 32)
-	rand.Read(b)
-	return base64.RawURLEncoding.EncodeToString(b)
-}*/
-
-/*func MakeProof(key []byte, data []byte) []byte {
-	h := hmac.New(
-		func() hash.Hash { return sha3.New256() },
-		key,
-	)
-	h.Write(data)
-	return h.Sum(nil)
-}*/
