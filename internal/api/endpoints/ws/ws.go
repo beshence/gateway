@@ -1,6 +1,6 @@
 package ws
 
-/*import (
+import (
 	"context"
 	"gateway/internal/api"
 	"gateway/internal/auth"
@@ -143,4 +143,4 @@ func WSV1(deps *api.Dependencies) gin.HandlerFunc {
 			deps.SignalManager.Forward(peer, message)
 		}
 	}
-}*/
+}

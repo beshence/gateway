@@ -145,7 +145,7 @@ func PostApiUrlsV1() gin.HandlerFunc {
 
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
-				"err":    "CANT_DECODE_PK",
+				"err":    "INTERNAL_ERROR",
 				"errmsg": "could not decode public key",
 			})
 			return

@@ -9,9 +9,8 @@ type Bank struct {
 }
 
 type Challenge struct {
-	Ciphertext []byte
-	Secret     []byte
-	ExpiresAt  time.Time
+	Nonce     []byte
+	ExpiresAt time.Time
 }
 
 type BankApiUrls struct {
