@@ -1,15 +1,14 @@
 package challenge
 
 import (
-	"crypto/hmac"
-	"crypto/mlkem"
+	"crypto/rand"
 	"encoding/base64"
 	"gateway/internal/api"
 	"gateway/internal/memory"
-	"gateway/internal/misc"
 	"net/http"
 	"time"
 
+	"github.com/cloudflare/circl/sign/slhdsa"
 	"github.com/gin-gonic/gin"
 )
 
@@ -19,14 +18,14 @@ func GetChallengeV1() gin.HandlerFunc {
 
 		memory.Mutex.Lock()
 
-		bank, ok := memory.Banks[bankID]
+		_, ok := memory.Banks[bankID]
 
 		memory.Mutex.Unlock()
 
 		if !ok {
 			c.JSON(http.StatusNotFound, gin.H{
 				"err":    "NO_BANK",
-				"errmsg": "we don't have information about this bank; first send encapsulation key via POST /api/bank/{bankID}/ek",
+				"errmsg": "we don't have information about this bank; first send public key via POST /api/bank/{bankID}/pk",
 			})
 			return
 		}
@@ -40,45 +39,38 @@ func GetChallengeV1() gin.HandlerFunc {
 		if ok {
 			if challenge.ExpiresAt.After(time.Now()) {
 				c.JSON(http.StatusOK, gin.H{
-					"err":        "0",
-					"ciphertext": base64.RawURLEncoding.EncodeToString(challenge.Ciphertext),
+					"err":   "0",
+					"nonce": base64.RawURLEncoding.EncodeToString(challenge.Nonce),
 				})
 				return
 			}
 		}
 
-		ekBytes := bank.EK
+		nonce := make([]byte, 64)
 
-		ek, err := mlkem.NewEncapsulationKey1024(ekBytes)
+		_, err := rand.Read(nonce)
 
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
-				"err":    "CANT_READ_EK",
-				"errmsg": "internal error when reading encapsulation key",
+				"err":    "INTERNAL_ERROR",
+				"errmsg": "failed to generate nonce",
 			})
+			return
 		}
-
-		sharedSecret, ciphertext := ek.Encapsulate()
 
 		memory.Mutex.Lock()
 
-		memory.Banks[bankID] = memory.Bank{
-			EK: ek.Bytes(),
-		}
-
 		memory.Challenges[bankID] = memory.Challenge{
-			Ciphertext: ciphertext,
-			Secret:     sharedSecret,
-			ExpiresAt:  time.Now().Add(time.Minute),
+			Nonce:     nonce,
+			ExpiresAt: time.Now().Add(time.Minute),
 		}
 
 		memory.Mutex.Unlock()
 
 		c.JSON(http.StatusOK, gin.H{
-			"err":        "0",
-			"ciphertext": base64.RawURLEncoding.EncodeToString(ciphertext),
+			"err":   "0",
+			"nonce": base64.RawURLEncoding.EncodeToString(nonce),
 		})
-		return
 	}
 }
 
@@ -86,8 +78,33 @@ func PassChallengeV1(deps *api.Dependencies) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		bankID := c.Param("bankId")
 
+		memory.Mutex.Lock()
+
+		bank, ok := memory.Banks[bankID]
+
+		challenge, ok := memory.Challenges[bankID]
+
+		memory.Mutex.Unlock()
+
+		if !ok {
+			c.JSON(http.StatusNotFound, gin.H{
+				"err": "NO_BANK",
+				"errmsg": "we don't have information about this bank; " +
+					"first send public key via POST /api/bank/{bankID}/pk",
+			})
+			return
+		}
+
+		if !ok || time.Now().After(challenge.ExpiresAt) {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"err":    "EXPIRED_CHALLENGE",
+				"errmsg": "this challenge has expired",
+			})
+			return
+		}
+
 		var req struct {
-			Proof string `json:"proof"`
+			SignatureB64 string `json:"s"`
 		}
 
 		if c.BindJSON(&req) != nil {
@@ -98,39 +115,52 @@ func PassChallengeV1(deps *api.Dependencies) gin.HandlerFunc {
 			return
 		}
 
-		proof, err := base64.RawURLEncoding.DecodeString(req.Proof)
+		signature, err := base64.RawURLEncoding.DecodeString(req.SignatureB64)
 
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
-				"err":    "CANT_DECODE_PROOF",
-				"errmsg": "could not decode proof",
+				"err":    "CANT_BIND_JSON",
+				"errmsg": "could not bind request body",
 			})
 			return
 		}
 
-		memory.Mutex.Lock()
+		publicKey := slhdsa.PublicKey{ID: slhdsa.SHAKE_256s}
+		err = publicKey.UnmarshalBinary(bank.PublicKeyBytes)
 
-		challenge, ok := memory.Challenges[bankID]
-
-		memory.Mutex.Unlock()
-
-		if !ok || time.Now().After(challenge.ExpiresAt) {
+		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
-				"err":    "EXPIRED_CHALLENGE",
-				"errmsg": "this challenge has expired",
+				"err":    "INTERNAL_ERROR",
+				"errmsg": "could not decode public key",
 			})
 			return
 		}
 
-		expectedProof := misc.MakeProof(
-			challenge.Secret,
-			challenge.Ciphertext,
+		domain := "BESHENCE-BANK-GATEWAY-PASS-CHALLENGE-V1"
+
+		message := make([]byte, 0, len(domain)+len(challenge.Nonce))
+
+		message = append(
+			message,
+			[]byte(domain)...,
 		)
 
-		if !hmac.Equal(expectedProof, proof) {
+		message = append(
+			message,
+			challenge.Nonce...,
+		)
+
+		valid := slhdsa.Verify(
+			&publicKey,
+			slhdsa.NewMessage(message),
+			signature,
+			nil,
+		)
+
+		if !valid {
 			c.JSON(http.StatusBadRequest, gin.H{
-				"err":    "WRONG_PROOF",
-				"errmsg": "your proof and expected proof are different",
+				"err":    "CANT_VERIFY_SIGNATURE",
+				"errmsg": "could not verify signature",
 			})
 			return
 		}
@@ -139,7 +169,7 @@ func PassChallengeV1(deps *api.Dependencies) gin.HandlerFunc {
 
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
-				"err":    "CANT_ISSUE_JWT",
+				"err":    "INTERNAL_ERROR",
 				"errmsg": "internal error when generating JWT token",
 			})
 			return
@@ -147,10 +177,7 @@ func PassChallengeV1(deps *api.Dependencies) gin.HandlerFunc {
 
 		memory.Mutex.Lock()
 
-		delete(
-			memory.Challenges,
-			bankID,
-		)
+		delete(memory.Challenges, bankID)
 
 		memory.Mutex.Unlock()
 

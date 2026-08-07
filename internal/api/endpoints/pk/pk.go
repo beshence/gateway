@@ -1,16 +1,16 @@
-package ek
+package pk
 
 import (
-	"crypto/mlkem"
 	"encoding/base64"
 	"gateway/internal/memory"
 	"gateway/internal/misc"
 	"net/http"
 
+	"github.com/cloudflare/circl/sign/slhdsa"
 	"github.com/gin-gonic/gin"
 )
 
-func GetEKV1() gin.HandlerFunc {
+func GetPublicKeyV1() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		bankID := c.Param("bankId")
 
@@ -23,27 +23,27 @@ func GetEKV1() gin.HandlerFunc {
 		if !ok {
 			c.JSON(http.StatusNotFound, gin.H{
 				"err":    "NO_BANK",
-				"errmsg": "we don't have encapsulation key of this bank",
+				"errmsg": "we don't have public key of this bank",
 			})
 			return
 		}
 
 		c.JSON(http.StatusOK, gin.H{
 			"err": "0",
-			"ek":  base64.RawURLEncoding.EncodeToString(bank.EK),
+			"pk":  base64.RawURLEncoding.EncodeToString(bank.PublicKeyBytes),
 		})
 	}
 }
 
-type postEKV1Request struct {
-	EK string `json:"ek" binding:"required"`
+type postPublicKeyV1Request struct {
+	PublicKeyEncoded string `json:"pk" binding:"required"`
 }
 
-func PostEKV1() gin.HandlerFunc {
+func PostPublicKeyV1() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		bankID := c.Param("bankId")
 
-		var req postEKV1Request
+		var req postPublicKeyV1Request
 
 		if c.BindJSON(&req) != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
@@ -53,31 +53,42 @@ func PostEKV1() gin.HandlerFunc {
 			return
 		}
 
-		ekBytes, err := base64.RawURLEncoding.DecodeString(req.EK)
+		publicKeyBytes, err := base64.RawURLEncoding.DecodeString(req.PublicKeyEncoded)
 
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
-				"err":    "CANT_DECODE_EK",
-				"errmsg": "could not decode encapsulation key",
+				"err":    "CANT_DECODE_PK",
+				"errmsg": "could not decode public key",
 			})
 			return
 		}
 
-		ek, err := mlkem.NewEncapsulationKey1024(ekBytes)
+		publicKey := slhdsa.PublicKey{ID: slhdsa.SHAKE_256s}
+
+		err = publicKey.UnmarshalBinary(publicKeyBytes)
+
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
-				"err":    "CANT_DECODE_EK",
-				"errmsg": "could not decode encapsulation key",
+				"err":    "CANT_DECODE_PK",
+				"errmsg": "could not decode public key",
 			})
 			return
 		}
 
-		generatedBankID := misc.GetBankID(ek)
+		generatedBankID, _ := misc.GetBankID(publicKey)
+
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"err":    "CANT_DECODE_PK",
+				"errmsg": "could not decode public key",
+			})
+			return
+		}
 
 		if bankID != generatedBankID {
 			c.JSON(http.StatusBadRequest, gin.H{
-				"err":    "CANT_DECODE_EK",
-				"errmsg": "could not decode encapsulation key",
+				"err":    "CANT_DECODE_PK",
+				"errmsg": "could not decode public key",
 			})
 			return
 		}
@@ -85,7 +96,7 @@ func PostEKV1() gin.HandlerFunc {
 		memory.Mutex.Lock()
 
 		memory.Banks[bankID] = memory.Bank{
-			EK: ek.Bytes(),
+			PublicKeyBytes: publicKeyBytes,
 		}
 
 		memory.Mutex.Unlock()

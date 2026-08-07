@@ -4,18 +4,17 @@ import (
 	"gateway/internal/auth"
 	"gateway/internal/memory"
 	"net/http"
-	"time"
 
 	"github.com/gin-gonic/gin"
 )
 
-func GetAPIURLsV1() gin.HandlerFunc {
+func GetApiUrlsV1() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		bankID := c.Param("bankId")
 
 		memory.Mutex.Lock()
 
-		data, ok := memory.APIURLss[bankID]
+		data, ok := memory.BanksApiUrls[bankID]
 
 		memory.Mutex.Unlock()
 
@@ -29,12 +28,12 @@ func GetAPIURLsV1() gin.HandlerFunc {
 
 		c.JSON(http.StatusOK, gin.H{
 			"err":  "0",
-			"urls": data.ApiUrls,
+			"urls": data.Urls,
 		})
 	}
 }
 
-func SetAPIURLsV1() gin.HandlerFunc {
+func PostApiUrlsV1() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		bankID := c.Param("bankId")
 
@@ -75,14 +74,13 @@ func SetAPIURLsV1() gin.HandlerFunc {
 			return
 		}
 
-		var apiUrls memory.APIURLs
+		var bankApiUrls memory.BankApiUrls
 
-		apiUrls.ApiUrls = req.ApiUrls
-		apiUrls.UpdatedAt = time.Now()
+		bankApiUrls.Urls = req.ApiUrls
 
 		memory.Mutex.Lock()
 
-		memory.APIURLss[bankID] = apiUrls
+		memory.BanksApiUrls[bankID] = bankApiUrls
 
 		memory.Mutex.Unlock()
 

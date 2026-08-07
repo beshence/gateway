@@ -5,16 +5,14 @@ import (
 )
 
 type Bank struct {
-	EK []byte
+	PublicKeyBytes []byte
 }
 
 type Challenge struct {
-	Ciphertext []byte
-	Secret     []byte
-	ExpiresAt  time.Time
+	Nonce     []byte
+	ExpiresAt time.Time
 }
 
-type APIURLs struct {
-	ApiUrls   []string  `json:"api_urls"`
-	UpdatedAt time.Time `json:"updated_at"`
+type BankApiUrls struct {
+	Urls []string
 }

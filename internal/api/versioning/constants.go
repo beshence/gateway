@@ -3,8 +3,8 @@ package versioning
 import (
 	"gateway/internal/api"
 	"gateway/internal/api/endpoints/challenge"
-	"gateway/internal/api/endpoints/ek"
 	"gateway/internal/api/endpoints/misc"
+	"gateway/internal/api/endpoints/pk"
 	"gateway/internal/api/endpoints/urls"
 	"gateway/internal/api/endpoints/ws"
 	"gateway/internal/auth"
@@ -29,15 +29,15 @@ func GetVersionedEndpoints(deps *api.Dependencies) VersionedEndpoints {
 		VersionV1dot0dot0: {
 			http.MethodGet: {
 				"/ping":                   misc.PingV1(),
-				"/bank/:bankId/ek":        ek.GetEKV1(),
+				"/bank/:bankId/pk":        pk.GetPublicKeyV1(),
+				"/bank/:bankId/urls":      urls.GetApiUrlsV1(),
 				"/bank/:bankId/challenge": challenge.GetChallengeV1(),
-				"/bank/:bankId/urls":      urls.GetAPIURLsV1(),
 				"/bank/:bankId/ws":        ws.WSV1(deps),
 			},
 			http.MethodPost: {
-				"/bank/:bankId/ek":        ek.PostEKV1(),
+				"/bank/:bankId/pk":        pk.PostPublicKeyV1(),
+				"/bank/:bankId/urls":      auth.RequireAuth(deps.JWTManager, urls.PostApiUrlsV1()),
 				"/bank/:bankId/challenge": challenge.PassChallengeV1(deps),
-				"/bank/:bankId/urls":      auth.RequireAuth(deps.JWTManager, urls.SetAPIURLsV1()),
 			},
 		},
 	}
