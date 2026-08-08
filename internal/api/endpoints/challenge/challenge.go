@@ -126,7 +126,7 @@ func PassChallengeV1(deps *api.Dependencies) gin.HandlerFunc {
 		}
 
 		publicKey := slhdsa.PublicKey{ID: slhdsa.SHAKE_256s}
-		err = publicKey.UnmarshalBinary(bank.PublicKeyBytes)
+		err = publicKey.UnmarshalBinary(bank.RootPublicKeyBytes)
 
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{

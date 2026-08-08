@@ -5,7 +5,9 @@ import (
 )
 
 type Bank struct {
-	PublicKeyBytes []byte
+	RootPublicKeyBytes []byte
+	LeafPublicKeyBytes []byte
+	LeafSignatureBytes []byte
 }
 
 type Challenge struct {

@@ -6,11 +6,12 @@ import (
 	"gateway/internal/misc"
 	"net/http"
 
+	"github.com/cloudflare/circl/sign/mldsa/mldsa87"
 	"github.com/cloudflare/circl/sign/slhdsa"
 	"github.com/gin-gonic/gin"
 )
 
-func GetPublicKeyV1() gin.HandlerFunc {
+func GetPublicKeysV1() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		bankID := c.Param("bankId")
 
@@ -30,20 +31,36 @@ func GetPublicKeyV1() gin.HandlerFunc {
 
 		c.JSON(http.StatusOK, gin.H{
 			"err": "0",
-			"pk":  base64.RawURLEncoding.EncodeToString(bank.PublicKeyBytes),
+			"root": gin.H{
+				"pk": base64.RawURLEncoding.EncodeToString(bank.RootPublicKeyBytes),
+			},
+			"leaf": gin.H{
+				"pk":  base64.RawURLEncoding.EncodeToString(bank.LeafPublicKeyBytes),
+				"sig": base64.RawURLEncoding.EncodeToString(bank.LeafSignatureBytes),
+			},
 		})
 	}
 }
 
-type postPublicKeyV1Request struct {
-	PublicKeyEncoded string `json:"pk" binding:"required"`
+type postPublicKeysV1Request struct {
+	Root postPublicKeysRootV1Request `json:"root" binding:"required"`
+	Leaf postPublicKeysLeafV1Request `json:"leaf" binding:"required"`
 }
 
-func PostPublicKeyV1() gin.HandlerFunc {
+type postPublicKeysRootV1Request struct {
+	PublicKeyB64 string `json:"pk" binding:"required"`
+}
+
+type postPublicKeysLeafV1Request struct {
+	PublicKeyB64 string `json:"pk" binding:"required"`
+	SignatureB64 string `json:"sig" binding:"required"`
+}
+
+func PostPublicKeysV1() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		bankID := c.Param("bankId")
 
-		var req postPublicKeyV1Request
+		var req postPublicKeysV1Request
 
 		if c.BindJSON(&req) != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
@@ -53,50 +70,123 @@ func PostPublicKeyV1() gin.HandlerFunc {
 			return
 		}
 
-		publicKeyBytes, err := base64.RawURLEncoding.DecodeString(req.PublicKeyEncoded)
+		// decode root public key
+
+		rootPublicKeyBytes, err := base64.RawURLEncoding.DecodeString(req.Root.PublicKeyB64)
 
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
-				"err":    "CANT_DECODE_PK",
-				"errmsg": "could not decode public key",
+				"err":    "CANT_DECODE_ROOT_PK",
+				"errmsg": "could not decode root public key",
 			})
 			return
 		}
 
-		publicKey := slhdsa.PublicKey{ID: slhdsa.SHAKE_256s}
+		rootPublicKey := slhdsa.PublicKey{ID: slhdsa.SHAKE_256s}
 
-		err = publicKey.UnmarshalBinary(publicKeyBytes)
+		err = rootPublicKey.UnmarshalBinary(rootPublicKeyBytes)
 
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
-				"err":    "CANT_DECODE_PK",
-				"errmsg": "could not decode public key",
+				"err":    "CANT_DECODE_ROOT_PK",
+				"errmsg": "could not decode root public key",
 			})
 			return
 		}
 
-		generatedBankID, _ := misc.GetBankID(publicKey)
+		// check bank id
+
+		generatedBankID, _ := misc.GetBankID(rootPublicKey)
 
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
-				"err":    "CANT_DECODE_PK",
-				"errmsg": "could not decode public key",
+				"err":    "CANT_DECODE_ROOT_PK",
+				"errmsg": "could not decode root public key",
 			})
 			return
 		}
 
 		if bankID != generatedBankID {
 			c.JSON(http.StatusBadRequest, gin.H{
-				"err":    "CANT_DECODE_PK",
-				"errmsg": "could not decode public key",
+				"err":    "CANT_DECODE_ROOT_PK",
+				"errmsg": "could not decode root public key",
 			})
 			return
 		}
 
+		// check leaf public key
+
+		leafPublicKeyBytes, err := base64.RawURLEncoding.DecodeString(
+			req.Leaf.PublicKeyB64,
+		)
+
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"err": "CANT_DECODE_LEAF_PK",
+			})
+			return
+		}
+
+		leafPublicKey := mldsa87.PublicKey{}
+
+		if err := leafPublicKey.UnmarshalBinary(leafPublicKeyBytes); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"err": "INVALID_LEAF_PK",
+			})
+			return
+		}
+
+		// decode signature
+
+		signature, err := base64.RawURLEncoding.DecodeString(
+			req.Leaf.SignatureB64,
+		)
+
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"err": "CANT_DECODE_SIGNATURE",
+			})
+			return
+		}
+
+		// check signature
+
+		domain := "BESHENCE-BANK-MLDSA-KEY-V1"
+
+		message := make([]byte, 0, len(domain)+len(leafPublicKeyBytes))
+
+		message = append(
+			message,
+			[]byte(domain)...,
+		)
+
+		message = append(
+			message,
+			leafPublicKeyBytes...,
+		)
+
+		valid := slhdsa.Verify(
+			&rootPublicKey,
+			slhdsa.NewMessage(message),
+			signature,
+			nil,
+		)
+
+		if !valid {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"err": "INVALID_LEAF_SIGNATURE",
+			})
+			return
+		}
+
+		// store public keys
+
 		memory.Mutex.Lock()
 
 		memory.Banks[bankID] = memory.Bank{
-			PublicKeyBytes: publicKeyBytes,
+			RootPublicKeyBytes: rootPublicKeyBytes,
+			LeafPublicKeyBytes: leafPublicKeyBytes,
+			LeafSignatureBytes: signature,
 		}
 
 		memory.Mutex.Unlock()
