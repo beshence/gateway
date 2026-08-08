@@ -26,7 +26,7 @@ type Message struct {
 	SessionID           string `json:"session_id,omitempty"`
 	Type                string `json:"type"`
 	EncapsulationKeyB64 string `json:"ek,omitempty"`
-	PKID                string `json:"pkid,omitempty"`
+	PrivateKeyID        string `json:"pkid,omitempty"`
 	CiphertextB64       string `json:"ct,omitempty"`
 	SignatureB64        string `json:"sig,omitempty"`
 
