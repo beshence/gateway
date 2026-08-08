@@ -29,12 +29,8 @@ type Message struct {
 	PrivateKeyID        string `json:"pkid,omitempty"`
 	CiphertextB64       string `json:"ct,omitempty"`
 	SignatureB64        string `json:"sig,omitempty"`
-
-	// to remove
-	SDP           string  `json:"sdp,omitempty"`
-	Candidate     string  `json:"candidate,omitempty"`
-	SDPMid        *string `json:"sdpmid,omitempty"`
-	SDPMLineIndex *uint16 `json:"sdpmlineindex,omitempty"`
+	NonceB64            string `json:"nonce,omitempty"`
+	MacB64              string `json:"mac,omitempty"`
 }
 
 type Manager struct {
