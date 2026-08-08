@@ -5,7 +5,7 @@ import (
 	"gateway/internal/api/versioning"
 	"gateway/internal/auth"
 	"gateway/internal/environment"
-	"gateway/internal/signal"
+	"gateway/internal/websocket"
 	"log"
 	"time"
 
@@ -33,7 +33,7 @@ func main() {
 		env.JWTTTLSeconds,
 	)
 
-	sig := signal.NewSignalManager()
+	sig := websocket.NewWebSocketManager()
 
 	dependencies := api.NewDependencies(jwt, sig)
 

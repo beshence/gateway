@@ -2,20 +2,20 @@ package api
 
 import (
 	"gateway/internal/auth"
-	"gateway/internal/signal"
+	"gateway/internal/websocket"
 )
 
 type Dependencies struct {
-	JWTManager    *auth.JWT
-	SignalManager *signal.Manager
+	JWTManager       *auth.JWT
+	WebSocketManager *websocket.Manager
 }
 
 func NewDependencies(
 	jwt *auth.JWT,
-	signal *signal.Manager,
+	ws *websocket.Manager,
 ) *Dependencies {
 	return &Dependencies{
-		JWTManager:    jwt,
-		SignalManager: signal,
+		JWTManager:       jwt,
+		WebSocketManager: ws,
 	}
 }

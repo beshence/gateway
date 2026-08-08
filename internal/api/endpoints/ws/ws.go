@@ -4,10 +4,10 @@ import (
 	"context"
 	"gateway/internal/api"
 	"gateway/internal/auth"
-	"gateway/internal/signal"
+	"gateway/internal/websocket"
 	"net/http"
 
-	"github.com/coder/websocket"
+	libws "github.com/coder/websocket"
 	"github.com/coder/websocket/wsjson"
 	"github.com/gin-gonic/gin"
 )
@@ -48,7 +48,7 @@ func WSV1(deps *api.Dependencies) gin.HandlerFunc {
 			return
 		}
 
-		var role signal.PeerRole
+		var role websocket.PeerRole
 
 		if roleRaw == "bank" {
 			auth.CheckAuth(deps.JWTManager)(c)
@@ -79,7 +79,7 @@ func WSV1(deps *api.Dependencies) gin.HandlerFunc {
 				return
 			}
 
-			role = signal.PeerRoleBank
+			role = websocket.PeerRoleBank
 
 		} else {
 			if sessionID == "" {
@@ -92,13 +92,13 @@ func WSV1(deps *api.Dependencies) gin.HandlerFunc {
 				return
 			}
 
-			role = signal.PeerRoleClient
+			role = websocket.PeerRoleClient
 		}
 
-		conn, err := websocket.Accept(
+		conn, err := libws.Accept(
 			c.Writer,
 			c.Request,
-			&websocket.AcceptOptions{
+			&libws.AcceptOptions{
 				InsecureSkipVerify: true,
 			},
 		)
@@ -108,27 +108,27 @@ func WSV1(deps *api.Dependencies) gin.HandlerFunc {
 		}
 
 		defer conn.Close(
-			websocket.StatusNormalClosure,
+			libws.StatusNormalClosure,
 			"",
 		)
 
-		peer := &signal.Peer{
+		peer := &websocket.Peer{
 			BankID:    bankID,
 			Role:      role,
 			SessionID: sessionID,
 			Conn:      conn,
 		}
 
-		deps.SignalManager.Add(peer)
+		deps.WebSocketManager.Add(peer)
 
 		defer func() {
-			deps.SignalManager.Remove(peer)
+			deps.WebSocketManager.Remove(peer)
 		}()
 
 		ctx := context.Background()
 
 		for {
-			var message signal.Message
+			var message websocket.Message
 
 			err := wsjson.Read(
 				ctx,
@@ -140,7 +140,7 @@ func WSV1(deps *api.Dependencies) gin.HandlerFunc {
 				break
 			}
 
-			deps.SignalManager.Forward(peer, message)
+			deps.WebSocketManager.Forward(peer, message)
 		}
 	}
 }

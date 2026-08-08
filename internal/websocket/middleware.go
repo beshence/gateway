@@ -1,4 +1,4 @@
-package signal
+package websocket
 
 import (
 	"context"
@@ -23,8 +23,16 @@ type Peer struct {
 }
 
 type Message struct {
-	SessionID     string  `json:"session_id,omitempty"`
-	Type          string  `json:"type"`
+	SessionID           string `json:"session_id,omitempty"`
+	Type                string `json:"type"`
+	EncapsulationKeyB64 string `json:"ek,omitempty"`
+	MlDsaPublicKeyB64   string `json:"pk,omitempty"`
+	MlDsaPKSignatureB64 string `json:"pksig,omitempty"`
+	CiphertextB64       string `json:"ct,omitempty"`
+	SignatureB64        string `json:"sig,omitempty"`
+	//PayloadB64          string `json:"p,omitempty"`
+
+	// to remove
 	SDP           string  `json:"sdp,omitempty"`
 	Candidate     string  `json:"candidate,omitempty"`
 	SDPMid        *string `json:"sdpmid,omitempty"`
@@ -37,7 +45,7 @@ type Manager struct {
 	clients map[string]map[string]*Peer
 }
 
-func NewSignalManager() *Manager {
+func NewWebSocketManager() *Manager {
 	return &Manager{
 		banks: make(map[string]*Peer),
 		clients: make(
