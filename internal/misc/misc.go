@@ -1,7 +1,7 @@
 package misc
 
 import (
-	"crypto/sha3"
+	"crypto/sha256"
 	"encoding/base32"
 	"strings"
 
@@ -15,7 +15,7 @@ func GetBankID(publicKey slhdsa.PublicKey) (string, error) {
 		return "", err
 	}
 
-	h := sha3.New256()
+	h := sha256.New()
 
 	_, err = h.Write([]byte("BESHENCE-BANK-ID-V1"))
 
