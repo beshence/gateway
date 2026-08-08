@@ -26,11 +26,9 @@ type Message struct {
 	SessionID           string `json:"session_id,omitempty"`
 	Type                string `json:"type"`
 	EncapsulationKeyB64 string `json:"ek,omitempty"`
-	MlDsaPublicKeyB64   string `json:"pk,omitempty"`
-	MlDsaPKSignatureB64 string `json:"pksig,omitempty"`
+	PKID                string `json:"pkid,omitempty"`
 	CiphertextB64       string `json:"ct,omitempty"`
 	SignatureB64        string `json:"sig,omitempty"`
-	//PayloadB64          string `json:"p,omitempty"`
 
 	// to remove
 	SDP           string  `json:"sdp,omitempty"`
